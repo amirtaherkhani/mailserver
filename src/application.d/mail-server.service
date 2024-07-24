@@ -1,0 +1,4 @@
+[MailServer]
+title=docker mail server
+description=About Production-ready fullstack but simple mail server (SMTP, IMAP, LDAP, Antispam, Antivirus, etc.) running inside a container.
+ports=25|143|465|587|993

@@ -1,0 +1,45 @@
+services:
+  mailserver:
+    image: docker.io/mailserver/docker-mailserver:latest
+    container_name: mailserver
+    hostname: mail
+    domainname: ${DOMAIN_NAME}
+    #user: ${UID}:${GID}
+    ports:
+      - 25:25 # SMTP  (explicit TLS => STARTTLS)
+      - 143:143 # IMAP4 (explicit TLS => STARTTLS)
+      - 465:465 # ESMTP (implicit TLS)
+      - 587:587 # ESMTP (explicit TLS => STARTTLS)
+      - 993:993 # IMAP4 (implicit TLS)
+    volumes:
+      - ./src/data/dms/mail-data/:/var/mail/
+      - ./src/data/dms/mail-state/:/var/mail-state/
+      - ./src/data/dms/mail-logs/:/var/log/mail/
+      - ./src/data/dms/config/:/tmp/docker-mailserver/
+      - ./src/data/letsencrypt:/etc/letsencrypt
+      - /etc/localtime:/etc/localtime:ro
+    restart: always
+    stop_grace_period: 1m
+    cap_add:
+      - NET_ADMIN
+    healthcheck:
+      test: ss --listening --tcp | grep -P 'LISTEN.+:smtp' || exit 1
+      timeout: 3s
+      retries: 0
+    networks:
+      - traefik-network
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    hostname: certbot-server
+    ports:
+      - 80:80
+    volumes:
+      - ./src/data/letsencrypt:/etc/letsencrypt
+      - ./src/data/certbot/logs:/var/log/letsencrypt/
+    command: certonly --standalone --force-renewal --email ${ADMIN_MAILE} -d ${MAIL_DOMAIN}
+      --agree-tos
+networks:
+  traefik-network:
+    external: true
