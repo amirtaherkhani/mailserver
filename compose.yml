@@ -31,6 +31,8 @@ services:
 
   certbot:
     image: certbot/certbot:latest
+    profiles:
+      - certbot
     container_name: certbot
     hostname: certbot-server
     ports:
@@ -40,6 +42,8 @@ services:
       - ./src/data/certbot/logs:/var/log/letsencrypt/
     command: certonly --standalone --force-renewal --email ${ADMIN_MAILE} -d ${MAIL_DOMAIN}
       --agree-tos
+    networks:
+      - traefik-network
 networks:
   traefik-network:
     external: true
