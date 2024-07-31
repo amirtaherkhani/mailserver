@@ -4,7 +4,8 @@ services:
     container_name: mailserver
     hostname: mail
     domainname: ${DOMAIN_NAME}
-    #user: ${UID}:${GID}
+    env_file:
+      - .env
     ports:
       - 25:25 # SMTP  (explicit TLS => STARTTLS)
       - 143:143 # IMAP4 (explicit TLS => STARTTLS)
@@ -40,7 +41,8 @@ services:
     volumes:
       - ./src/data/letsencrypt:/etc/letsencrypt
       - ./src/data/certbot/logs:/var/log/letsencrypt/
-    command: certonly --standalone --force-renewal --email ${ADMIN_MAILE} -d ${MAIL_DOMAIN}
+    command:
+      certonly --standalone --force-renewal --email ${TLS_MAILE} -d ${MAIL_HOST}
       --agree-tos
     networks:
       - traefik-network
