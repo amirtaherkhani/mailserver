@@ -6,12 +6,12 @@ services:
     domainname: ${DOMAIN_NAME}
     env_file:
       - .env
-    ports:
-      - 25:25 # SMTP  (explicit TLS => STARTTLS)
-      - 143:143 # IMAP4 (explicit TLS => STARTTLS)
-      - 465:465 # ESMTP (implicit TLS)
-      - 587:587 # ESMTP (explicit TLS => STARTTLS)
-      - 993:993 # IMAP4 (implicit TLS)
+    # ports:
+    #   - 25:25 # SMTP  (explicit TLS => STARTTLS)
+    #   - 143:143 # IMAP4 (explicit TLS => STARTTLS)
+    #   - 465:465 # ESMTP (implicit TLS)
+    #   - 587:587 # ESMTP (explicit TLS => STARTTLS)
+    #   - 993:993 # IMAP4 (implicit TLS)
     volumes:
       - ./src/data/dms/mail-data/:/var/mail/
       - ./src/data/dms/mail-state/:/var/mail-state/
@@ -19,6 +19,59 @@ services:
       - ./src/data/dms/config/:/tmp/docker-mailserver/
       - ./src/data/letsencrypt:/etc/letsencrypt
       - /etc/localtime:/etc/localtime:ro
+    labels:
+      # SMTP
+      - traefik.enable=true
+      - traefik.tcp.routers.mail-smtp.rule=HostSNI(`*`)
+      - traefik.tcp.routers.mail-smtp.entrypoints=mail-smtp
+      - traefik.tcp.routers.mail-smtp.service=smtp
+      - traefik.tcp.services.smtp.loadbalancer.server.port=25
+
+      # SMTPS (Implicit TLS)
+      - traefik.tcp.routers.mail-smtps.rule=HostSNI(`*`)
+      - traefik.tcp.routers.mail-smtps.entrypoints=mail-submissions
+      - traefik.tcp.routers.mail-smtps.tls=true
+      - traefik.tcp.routers.mail-smtps.service=smtps
+      - traefik.tcp.services.smtps.loadbalancer.server.port=465
+
+      # Submission (Explicit TLS)
+      - traefik.tcp.routers.mail-submission.rule=HostSNI(`*`)
+      - traefik.tcp.routers.mail-submission.entrypoints=mail-submission
+      - traefik.tcp.routers.mail-submission.service=submission
+      - traefik.tcp.services.submission.loadbalancer.server.port=587
+
+      # IMAP
+      - traefik.tcp.routers.mail-imap.rule=HostSNI(`*`)
+      - traefik.tcp.routers.mail-imap.entrypoints=mail-imap
+      - traefik.tcp.routers.mail-imap.service=imap
+      - traefik.tcp.services.imap.loadbalancer.server.port=143
+
+      # IMAPS (Implicit TLS)
+      - traefik.tcp.routers.mail-imaps.rule=HostSNI(`*`)
+      - traefik.tcp.routers.mail-imaps.entrypoints=mail-imaps
+      - traefik.tcp.routers.mail-imaps.tls=true
+      - traefik.tcp.routers.mail-imaps.service=imaps
+      - traefik.tcp.services.imaps.loadbalancer.server.port=993
+
+      # POP3
+      - traefik.tcp.routers.mail-pop3.rule=HostSNI(`*`)
+      - traefik.tcp.routers.mail-pop3.entrypoints=mail-pop3
+      - traefik.tcp.routers.mail-pop3.service=pop3
+      - traefik.tcp.services.pop3.loadbalancer.server.port=110
+
+      # POP3S (Implicit TLS)
+      - traefik.tcp.routers.mail-pop3s.rule=HostSNI(`*`)
+      - traefik.tcp.routers.mail-pop3s.entrypoints=mail-pop3s
+      - traefik.tcp.routers.mail-pop3s.tls=true
+      - traefik.tcp.routers.mail-pop3s.service=pop3s
+      - traefik.tcp.services.pop3s.loadbalancer.server.port=995
+
+      # ManageSieve
+      - traefik.tcp.routers.mail-managesieve.rule=HostSNI(`*`)
+      - traefik.tcp.routers.mail-managesieve.entrypoints=mail-managesieve
+      - traefik.tcp.routers.mail-managesieve.service=managesieve
+      - traefik.tcp.services.managesieve.loadbalancer.server.port=4190
+
     restart: always
     stop_grace_period: 1m
     cap_add:
@@ -27,21 +80,6 @@ services:
       test: ss --listening --tcp | grep -P 'LISTEN.+:smtp' || exit 1
       timeout: 3s
       retries: 0
-
-    labels:
-      - traefik.enable=true
-      - traefik.tcp.routers.mail-smtp.rule=HostSNI(`*`)
-      - traefik.tcp.routers.mail-smtp.entrypoints=smtp
-      - traefik.tcp.routers.mail-smtp.service=smtp
-      - traefik.tcp.services.mail-smtp.loadbalancer.server.port=25
-      - traefik.tcp.services.mail-smtp.loadbalancer.proxyProtocol.version=2
-      - traefik.tcp.routers.mail-submissions.rule=HostSNI(`*`)
-      - traefik.tcp.routers.mail-submissions.entrypoints=smtp-submissions
-      - traefik.tcp.routers.mail-submissions.service=smtp-submissions
-      - traefik.tcp.services.mail-submissions.loadbalancer.server.port=465
-      - traefik.tcp.services.mail-submissions.loadbalancer.proxyProtocol.version=2
-      - traefik.tcp.routers.mail-submissions.rule=HostSNI(`${MAIL_HOST}`)
-      - traefik.tcp.routers.mail-submissions.tls.passthrough=true
     networks:
       - traefik-network
 
