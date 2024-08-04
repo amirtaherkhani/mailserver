@@ -12,13 +12,7 @@ services:
     #   - 465:465 # ESMTP (implicit TLS)
     #   - 587:587 # ESMTP (explicit TLS => STARTTLS)
     #   - 993:993 # IMAP4 (implicit TLS)
-    volumes:
-      - ./src/data/dms/mail-data/:/var/mail/
-      - ./src/data/dms/mail-state/:/var/mail-state/
-      - ./src/data/dms/mail-logs/:/var/log/mail/
-      - ./src/data/dms/config/:/tmp/docker-mailserver/
-      - ./src/data/letsencrypt:/etc/letsencrypt
-      - /etc/localtime:/etc/localtime:ro
+
     labels:
       # SMTP
       - traefik.enable=true
@@ -72,6 +66,13 @@ services:
       - traefik.tcp.routers.mail-managesieve.service=managesieve
       - traefik.tcp.services.managesieve.loadbalancer.server.port=4190
 
+    volumes:
+      - ./src/data/dms/mail-data/:/var/mail/
+      - ./src/data/dms/mail-state/:/var/mail-state/
+      - ./src/data/dms/mail-logs/:/var/log/mail/
+      - ./src/data/dms/config/:/tmp/docker-mailserver/
+      - ./src/data/letsencrypt:/etc/letsencrypt
+      - /etc/localtime:/etc/localtime:ro
     restart: always
     stop_grace_period: 1m
     cap_add:
