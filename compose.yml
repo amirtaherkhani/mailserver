@@ -6,66 +6,67 @@ services:
     domainname: ${DOMAIN_NAME}
     env_file:
       - .env
-    # ports:
-    #   - 25:25 # SMTP  (explicit TLS => STARTTLS)
-    #   - 143:143 # IMAP4 (explicit TLS => STARTTLS)
-    #   - 465:465 # ESMTP (implicit TLS)
-    #   - 587:587 # ESMTP (explicit TLS => STARTTLS)
-    #   - 993:993 # IMAP4 (implicit TLS)
+#    ports:
+#       - 25:25 # SMTP  (explicit TLS => STARTTLS)
+#       - 143:143 # IMAP4 (explicit TLS => STARTTLS)
+#       - 465:465 # ESMTP (implicit TLS)
+#       - 587:587 # ESMTP (explicit TLS => STARTTLS)
+#       - 993:993 # IMAP4 (implicit TLS)
 
     labels:
-      # SMTP
+     #  SMTP
       - traefik.enable=true
       - traefik.tcp.routers.mail-smtp.rule=HostSNI(`*`)
       - traefik.tcp.routers.mail-smtp.entrypoints=mail-smtp
       - traefik.tcp.routers.mail-smtp.service=smtp
       - traefik.tcp.services.smtp.loadbalancer.server.port=25
-
-      # SMTPS (Implicit TLS)
+      - traefik.tcp.services.mail-smtp.loadbalancer.proxyProtocol.version=2
+     #  SMTPS (Implicit TLS)
       - traefik.tcp.routers.mail-smtps.rule=HostSNI(`*`)
-      - traefik.tcp.routers.mail-smtps.entrypoints=mail-submissions
+      - traefik.tcp.routers.mail-smtps.entrypoints=mail-smtps
       - traefik.tcp.routers.mail-smtps.tls=true
       - traefik.tcp.routers.mail-smtps.service=smtps
       - traefik.tcp.services.smtps.loadbalancer.server.port=465
-
-      # Submission (Explicit TLS)
+      - traefik.tcp.services.mail-smtps.loadbalancer.proxyProtocol.version=2
+     #  Submission (Explicit TLS)
       - traefik.tcp.routers.mail-submission.rule=HostSNI(`*`)
       - traefik.tcp.routers.mail-submission.entrypoints=mail-submission
       - traefik.tcp.routers.mail-submission.service=submission
       - traefik.tcp.services.submission.loadbalancer.server.port=587
-
-      # IMAP
+      - traefik.tcp.services.mail-submission.loadbalancer.proxyProtocol.version=2
+     # IMAP
       - traefik.tcp.routers.mail-imap.rule=HostSNI(`*`)
       - traefik.tcp.routers.mail-imap.entrypoints=mail-imap
       - traefik.tcp.routers.mail-imap.service=imap
       - traefik.tcp.services.imap.loadbalancer.server.port=143
-
-      # IMAPS (Implicit TLS)
+      - traefik.tcp.services.mail-imap.loadbalancer.proxyProtocol.version=2
+     # IMAPS (Implicit TLS)
       - traefik.tcp.routers.mail-imaps.rule=HostSNI(`*`)
       - traefik.tcp.routers.mail-imaps.entrypoints=mail-imaps
       - traefik.tcp.routers.mail-imaps.tls=true
       - traefik.tcp.routers.mail-imaps.service=imaps
       - traefik.tcp.services.imaps.loadbalancer.server.port=993
-
-      # POP3
+      - traefik.tcp.services.mail-imaps.loadbalancer.proxyProtocol.version=2
+     # POP3
       - traefik.tcp.routers.mail-pop3.rule=HostSNI(`*`)
       - traefik.tcp.routers.mail-pop3.entrypoints=mail-pop3
       - traefik.tcp.routers.mail-pop3.service=pop3
       - traefik.tcp.services.pop3.loadbalancer.server.port=110
-
-      # POP3S (Implicit TLS)
+      - traefik.tcp.services.mail-pop3.loadbalancer.proxyProtocol.version=2
+     # POP3S (Implicit TLS)
       - traefik.tcp.routers.mail-pop3s.rule=HostSNI(`*`)
       - traefik.tcp.routers.mail-pop3s.entrypoints=mail-pop3s
       - traefik.tcp.routers.mail-pop3s.tls=true
       - traefik.tcp.routers.mail-pop3s.service=pop3s
       - traefik.tcp.services.pop3s.loadbalancer.server.port=995
-
+      - traefik.tcp.services.mail-pop3s.loadbalancer.proxyProtocol.version=2
       # ManageSieve
       - traefik.tcp.routers.mail-managesieve.rule=HostSNI(`*`)
       - traefik.tcp.routers.mail-managesieve.entrypoints=mail-managesieve
       - traefik.tcp.routers.mail-managesieve.service=managesieve
       - traefik.tcp.services.managesieve.loadbalancer.server.port=4190
-
+      - traefik.tcp.services.mail-managesieve.loadbalancer.proxyProtocol.version=2
+      - traefik.tcp.routers.mail-submissions.tls.passthrough=true
     volumes:
       - ./src/data/dms/mail-data/:/var/mail/
       - ./src/data/dms/mail-state/:/var/mail-state/
@@ -75,14 +76,15 @@ services:
       - /etc/localtime:/etc/localtime:ro
     restart: always
     stop_grace_period: 1m
-    cap_add:
-      - NET_ADMIN
+#    cap_add:
+#      - NET_ADMIN
     healthcheck:
       test: ss --listening --tcp | grep -P 'LISTEN.+:smtp' || exit 1
       timeout: 3s
       retries: 0
     networks:
-      - traefik-network
+      traefik-network:
+        ipv4_address: 172.16.42.3
 
   certbot:
     image: certbot/certbot:latest
@@ -99,7 +101,8 @@ services:
       certonly --standalone --force-renewal --email ${TLS_MAILE} -d ${MAIL_HOST}
       --agree-tos
     networks:
-      - traefik-network
+        traefik-network:
+          ipv4_address: 172.16.42.4
 networks:
   traefik-network:
     external: true
