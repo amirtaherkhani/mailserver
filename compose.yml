@@ -3,6 +3,7 @@ services:
     image: ghcr.io/docker-mailserver/docker-mailserver:latest
     container_name: mailserver
     hostname: ${MAIL_HOST}
+#    user: ${UID}:${GID}
     env_file:
       - .env
     ports:
@@ -20,6 +21,7 @@ services:
       - ./src/data/dms/config/:/tmp/docker-mailserver/
       - ./src/data/letsencrypt:/etc/letsencrypt
       - /etc/localtime:/etc/localtime:ro
+#      - ./state/:/var/mail-state/
     restart: always
     stop_grace_period: 1m
     cap_add:
@@ -36,6 +38,7 @@ services:
 
   certbot:
     image: certbot/certbot:latest
+ #   user: ${UID}:${GID}
     profiles:
       - certbot
     container_name: certbot
