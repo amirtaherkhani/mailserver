@@ -1,59 +1,54 @@
 services:
   mailserver:
-    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    image: docker.io/mailserver/docker-mailserver:latest
     container_name: mailserver
-    hostname: ${MAIL_HOST}
-#    user: ${UID}:${GID}
-    env_file:
-      - .env
+    hostname: mail
+    domainname: next-hub.app
+    env_file: .env
     ports:
-      - "25:25" # SMTP (explicit TLS => STARTTLS)
-      - "143:143" # IMAP4 (explicit TLS => STARTTLS)
-      - "465:465" # ESMTP (implicit TLS)
-      - "587:587" # ESMTP (explicit TLS => STARTTLS)
-      - "993:993" # IMAP4 (implicit TLS)
-      - "110:110" # POP3
-      - "995:995" # POP3 (implicit TLS)
+      - "25:25"    # SMTP  (explicit TLS => STARTTLS)
+      - "143:143"  # IMAP4 (explicit TLS => STARTTLS)
+      - "465:465"  # ESMTP (implicit TLS)
+      - "587:587"  # ESMTP (explicit TLS => STARTTLS)
+      - "993:993"  # IMAP4 (implicit TLS)
     volumes:
       - ./src/data/dms/mail-data/:/var/mail/
       - ./src/data/dms/mail-state/:/var/mail-state/
       - ./src/data/dms/mail-logs/:/var/log/mail/
       - ./src/data/dms/config/:/tmp/docker-mailserver/
       - ./src/data/letsencrypt:/etc/letsencrypt
+      - ./src/config/10-custom.conf:/etc/dovecot/conf.d/10-custom.conf
+      - ./src/certs/:/certs
       - /etc/localtime:/etc/localtime:ro
-#      - ./state/:/var/mail-state/
     restart: always
     stop_grace_period: 1m
     cap_add:
       - NET_ADMIN
     healthcheck:
-      test: ss --listening --tcp | grep -P 'LISTEN.+:smtp' || exit 1
+      test: "ss --listening --tcp | grep -P 'LISTEN.+:smtp' || exit 1"
       timeout: 3s
-      retries: 0
-    dns:
-      - 1.1.1.1 # Cloudflare DNS
-      - 8.8.8.8 # Google DNS
+      retries: 2
     networks:
-      - default
+      - mail-network
+      - traefik-network
 
   certbot:
     image: certbot/certbot:latest
- #   user: ${UID}:${GID}
+    container_name: certbot
     profiles:
       - certbot
-    container_name: certbot
-    hostname: certbot-server
     ports:
-      - 80:80
+      - "80:80"
     volumes:
       - ./src/data/letsencrypt:/etc/letsencrypt
       - ./src/data/certbot/logs:/var/log/letsencrypt/
-    command:
-      certonly --standalone --force-renewal --email ${TLS_MAILE} -d ${MAIL_HOST}
-      --agree-tos
+    command: certonly --standalone --force-renewal --email amirtaherkhani@outlook.com -d mail.next-hub.app --agree-tos
     networks:
-      - default
+      - mail-network
 
 networks:
-  default:
+  traefik-network:
+    external: true
+  mail-network:
+    external: false
     name: mail-network
